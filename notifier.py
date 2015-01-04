@@ -12,7 +12,7 @@ class Seattle911IncidentProcessor:
     
     def parse_incidents(self):            
         soup = BeautifulSoup(requests.get(self.RECORDS_URL).content)
-        rows = soup.find_all("table")[3].find_all("tr")
+        rows = soup.find_all('table')[3].find_all('tr')
         incidents = []
         for row in rows:
             try:
@@ -56,18 +56,18 @@ class Seattle911IncidentProcessor:
 
     def process_incidents(self, incidents):
         try:
-            recorded = json.load(open("incidents.json"))
+            recorded = json.load(open('incidents.json'))
         except Exception as inst:
             recorded = []
 
         for incident in incidents:
             if not incident['number'] in recorded:
-                print("Looking up %s" % incident["location"], end = '', flush = True)
+                print("Looking up %s" % incident['location'], end = '', flush = True)
                 incident["location"] = incident['location'].replace('/', '%26').replace(' Av ', ' Ave ')
                 recorded.append(incident['number'])
 
                 try:
-                        result = json.loads(requests.get("https://maps.googleapis.com/maps/api/geocode/json?address=%s Seattle&components=administrative_area:WA|country:US" % incident["location"]).content.decode('utf-8'))
+                        result = json.loads(requests.get('https://maps.googleapis.com/maps/api/geocode/json?address=%s Seattle&components=administrative_area:WA|country:US' % incident['location']).content.decode('utf-8'))
                         time.sleep(1)
                 except:
                     time.sleep(30)
@@ -80,7 +80,7 @@ class Seattle911IncidentProcessor:
                 lng = result['results'][0]['geometry']['location']['lng']
                 print("... %s, %s" % (lat, lng))
 
-                if lat > self.GEOJSON_FENCE[0][0][1] and lat < self.GEOJSON_FENCE[0][1][1] and lng > self.GEOJSON_FENCE[0][0][0] and lng < self.GEOJSON_FENCE[0][2][0]:
+                if lat > self.GEOJSON_FENCE[0][1] and lat < self.GEOJSON_FENCE[1][1] and lng > self.GEOJSON_FENCE[0][0] and lng < self.GEOJSON_FENCE[2][0]:
                     print("\033[91mWARNING: %s %s falls within bounds\033[0m" % (incident['number'], incident['location']))
                     
         return incidents
@@ -88,7 +88,7 @@ class Seattle911IncidentProcessor:
 processor = Seattle911IncidentProcessor()
 incidents = processor.process_incidents(processor.parse_incidents())
 
-savefile = open("incidents.json", "w")
+savefile = open('incidents.json', 'w')
 savefile.write(json.dumps(recorded))
 savefile.close()
     

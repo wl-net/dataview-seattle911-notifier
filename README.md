@@ -1,11 +1,11 @@
 Dataview Seattle 911 Notifier
 ============================
 
-This script informs dataview of 911 activity in the Seattle area.  
+This script informs dataview of 911 activity in the Seattle area.
 
 Geofencing
 ----
-This script supports GEOJSON fencing to reduce the number of incidents reported to those of a particular area.
+This script supports GeoJSON fencing to reduce the number of incidents reported to those of a particular area.
 
 
 Address Monitoring
