@@ -67,11 +67,11 @@ class Seattle911IncidentProcessor:
         for incident in incidents:
             if not incident['number'] in recorded:
                 print("Looking up %s" % incident['location'], end = '', flush = True)
-                incident["location"] = incident['location'].replace('/', '%26').replace(' Av ', ' Ave ')
+                incident["location"] = incident['location'].replace(' Av ', ' Ave ')
                 recorded.append(incident['number'])
 
                 try:
-                    result = json.loads(requests.get('https://maps.googleapis.com/maps/api/geocode/json?address=%s Seattle&components=administrative_area:WA|country:US' % incident['location']).content.decode('utf-8'))
+                    result = json.loads(requests.get('https://maps.googleapis.com/maps/api/geocode/json?address=%s Seattle&components=administrative_area:WA|country:US' % incident['location'].replace('/', '%26')).content.decode('utf-8'))
                     time.sleep(1)
                 except:
                     time.sleep(30)
