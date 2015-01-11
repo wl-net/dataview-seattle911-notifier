@@ -2,11 +2,15 @@
 
 import requests, json, time, urllib
 from bs4 import BeautifulSoup
+from dateutil.parser import parse
+from rest_client import DataViewRestClient
 
 class Seattle911IncidentProcessor:
 
-    def __init__(self, geofence):
+    def __init__(self, api_endpoint, api_token, geofence):
         self.RECORDS_URL = 'http://www2.ci.seattle.wa.us/fire/realtime911/getRecsForDatePub.asp?action=Today&incDate=&rad1=des'
+        self.API_ENDPOINT = api_endpoint
+        self.API_TOKEN = api_token
         self.GEOJSON_FENCE = geofence
         pass
     
@@ -67,8 +71,8 @@ class Seattle911IncidentProcessor:
                 recorded.append(incident['number'])
 
                 try:
-                        result = json.loads(requests.get('https://maps.googleapis.com/maps/api/geocode/json?address=%s Seattle&components=administrative_area:WA|country:US' % incident['location']).content.decode('utf-8'))
-                        time.sleep(1)
+                    result = json.loads(requests.get('https://maps.googleapis.com/maps/api/geocode/json?address=%s Seattle&components=administrative_area:WA|country:US' % incident['location']).content.decode('utf-8'))
+                    time.sleep(1)
                 except:
                     time.sleep(30)
                     print("... Failed")
@@ -82,7 +86,9 @@ class Seattle911IncidentProcessor:
 
                 if lat > self.GEOJSON_FENCE[0][1] and lat < self.GEOJSON_FENCE[1][1] and lng > self.GEOJSON_FENCE[0][0] and lng < self.GEOJSON_FENCE[2][0]:
                     print("\033[91mWARNING: %s %s falls within bounds\033[0m" % (incident['number'], incident['location']))
-                    
+
+                client = DataViewRestClient(self.API_ENDPOINT, self.API_TOKEN)
+                print("Response from dataview " + str(client.create_model('safety-incident', {'location': incident['location'], 'time': parse(incident['date']).strftime('%Y-%m-%d %H:%M:%S'), 'units': incident['units'], 'type': incident['type']})))
         return incidents
 
 processor = Seattle911IncidentProcessor()
