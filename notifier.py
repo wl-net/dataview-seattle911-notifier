@@ -64,37 +64,42 @@ class Seattle911IncidentProcessor:
         except Exception as inst:
             recorded = []
 
-        for incident in incidents:
-            if not incident['number'] in recorded:
-                print("Looking up %s" % incident['location'], end = '', flush = True)
-                incident["location"] = incident['location'].replace(' Av ', ' Ave ')
-                recorded.append(incident['number'])
+        try:
+            for incident in incidents:
+                if not incident['number'] in recorded:
+                    print("Looking up %s" % incident['location'], end = '', flush = True)
+                    incident["location"] = incident['location'].replace(' Av ', ' Ave ')
 
-                try:
-                    result = json.loads(requests.get('https://maps.googleapis.com/maps/api/geocode/json?address=%s Seattle&components=administrative_area:WA|country:US' % incident['location'].replace('/', '%26')).content.decode('utf-8'))
-                    time.sleep(1)
-                except:
-                    time.sleep(30)
-                    print("... Failed")
+                    try:
+                        result = json.loads(requests.get('https://maps.googleapis.com/maps/api/geocode/json?address=%s Seattle&components=administrative_area:WA|country:US' % incident['location'].replace('/', '%26')).content.decode('utf-8'))
+                        time.sleep(1)
+                    except:
+                        time.sleep(30)
+                        print("... Failed")
 
-                if len(result['results']) != 1:
-                        print("... \033[93mWARNING: Skipping %s - couldn't geocode it\033[0m" % incident['location'])
-                        continue
-                lat = result['results'][0]['geometry']['location']['lat']
-                lng = result['results'][0]['geometry']['location']['lng']
-                print("... %s, %s" % (lat, lng))
+                    if len(result['results']) != 1:
+                            print("... \033[93mWARNING: Skipping %s - couldn't geocode it\033[0m" % incident['location'])
+                            continue
+                    lat = result['results'][0]['geometry']['location']['lat']
+                    lng = result['results'][0]['geometry']['location']['lng']
+                    print("... %s, %s" % (lat, lng))
 
-                if lat > self.GEOJSON_FENCE[0][1] and lat < self.GEOJSON_FENCE[1][1] and lng > self.GEOJSON_FENCE[0][0] and lng < self.GEOJSON_FENCE[2][0]:
-                    print("\033[91mWARNING: %s %s falls within bounds\033[0m" % (incident['number'], incident['location']))
+                    if lat > self.GEOJSON_FENCE[0][1] and lat < self.GEOJSON_FENCE[1][1] and lng > self.GEOJSON_FENCE[0][0] and lng < self.GEOJSON_FENCE[2][0]:
+                        print("\033[91mWARNING: %s %s falls within bounds\033[0m" % (incident['number'], incident['location']))
 
-                client = DataViewRestClient(self.API_ENDPOINT, self.API_TOKEN)
-                print("Response from dataview " + str(client.create_model('safety-incident', {'location': incident['location'], 'time': parse(incident['date']).strftime('%Y-%m-%d %H:%M:%S'), 'units': incident['units'], 'type': incident['type']})))
-        return incidents
+                    client = DataViewRestClient(self.API_ENDPOINT, self.API_TOKEN)
+                    print("Response from dataview " + str(client.create_model('safety-incident', {'location': incident['location'], 'time': parse(incident['date']).strftime('%Y-%m-%d %H:%M:%S'), 'units': incident['units'], 'type': incident['type']})))
+                    recorded.append(incident['number'])
+
+            self.save_state(recorded)
+        except Exception as e:
+            print("Caught Exception: " + str(e))
+            self.save_state(recorded)
+
+    def save_state(self, incidents):
+        savefile = open('incidents.json', 'w')
+        savefile.write(json.dumps(incidents))
+        savefile.close()
 
 processor = Seattle911IncidentProcessor()
 incidents = processor.process_incidents(processor.parse_incidents())
-
-savefile = open('incidents.json', 'w')
-savefile.write(json.dumps(recorded))
-savefile.close()
-    
