@@ -2,16 +2,11 @@
 
 import requests, json, time, urllib
 from bs4 import BeautifulSoup
-from dateutil.parser import parse
-from rest_client import DataViewRestClient
 
 class Seattle911IncidentProcessor:
-
-    def __init__(self, api_endpoint, api_token, geofence):
+    def __init__(self, processor):
         self.RECORDS_URL = 'http://www2.ci.seattle.wa.us/fire/realtime911/getRecsForDatePub.asp?action=Today&incDate=&rad1=des'
-        self.API_ENDPOINT = api_endpoint
-        self.API_TOKEN = api_token
-        self.GEOJSON_FENCE = geofence
+        self.processor = processor
         pass
     
     def parse_incidents(self):            
@@ -67,29 +62,7 @@ class Seattle911IncidentProcessor:
         try:
             for incident in incidents:
                 if not incident['number'] in recorded:
-                    print("Looking up %s" % incident['location'], end = '', flush = True)
-                    incident["location"] = incident['location'].replace(' Av ', ' Ave ')
-
-                    try:
-                        result = json.loads(requests.get('https://maps.googleapis.com/maps/api/geocode/json?address=%s Seattle&components=administrative_area:WA|country:US' % incident['location'].replace('/', '%26')).content.decode('utf-8'))
-                        time.sleep(1)
-                    except:
-                        time.sleep(30)
-                        print("... Failed")
-
-                    if len(result['results']) != 1:
-                            print("... \033[93mWARNING: Skipping %s - couldn't geocode it\033[0m" % incident['location'])
-                            continue
-                    lat = result['results'][0]['geometry']['location']['lat']
-                    lng = result['results'][0]['geometry']['location']['lng']
-                    print("... %s, %s" % (lat, lng))
-
-                    if lat > self.GEOJSON_FENCE[0][1] and lat < self.GEOJSON_FENCE[1][1] and lng > self.GEOJSON_FENCE[0][0] and lng < self.GEOJSON_FENCE[2][0]:
-                        print("\033[91mWARNING: %s %s falls within bounds\033[0m" % (incident['number'], incident['location']))
-
-                    client = DataViewRestClient(self.API_ENDPOINT, self.API_TOKEN)
-                    print("Response from dataview " + str(client.create_model('safety-incident', {'location': incident['location'], 'time': parse(incident['date']).strftime('%Y-%m-%d %H:%M:%S'), 'units': incident['units'], 'type': incident['type']})))
-                    recorded.append(incident['number'])
+                    self.processor.process(incident)
 
             self.save_state(recorded)
         except Exception as e:
@@ -100,6 +73,3 @@ class Seattle911IncidentProcessor:
         savefile = open('incidents.json', 'w')
         savefile.write(json.dumps(incidents))
         savefile.close()
-
-processor = Seattle911IncidentProcessor()
-incidents = processor.process_incidents(processor.parse_incidents())
